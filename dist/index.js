@@ -59,11 +59,11 @@ const app = (0, express_1.default)();
 dotenv.config();
 app.use((0, cookie_parser_1.default)());
 app.use((0, cors_1.default)({
-    origin: "http://localhost:5173",
-    credentials: true
+    origin: process.env.FRONTEND_LINK,
+    credentials: true,
 }));
 app.use(express_1.default.json());
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // console.log("username", req.body);
@@ -72,32 +72,36 @@ app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, funct
         const checkEmail = yield db_1.userModel.findOne({ email: email });
         if (checkEmail) {
             res.status(409).json({
-                message: "Email is already present, typy with different email address"
+                message: "Email is already present, typy with different email address",
             });
             return;
         }
         const passwordHashed = yield bcrypt_1.default.hash(password, 10);
-        const response = yield db_1.userModel.create({ email, password: passwordHashed, username });
+        const response = yield db_1.userModel.create({
+            email,
+            password: passwordHashed,
+            username,
+        });
         if (!response) {
             res.status(408).json({
-                messgae: "Error while signup, new user"
+                messgae: "Error while signup, new user",
             });
             return;
         }
         res.status(200).json({
-            message: "User is successfully created"
+            message: "User is successfully created",
         });
     }
     catch (error) {
         if (error instanceof zod_1.ZodError) {
             res.status(404).json({
                 message: "validation error",
-                error: error.errors
+                error: error.errors,
             });
         }
         else {
             res.status(500).json({
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }
@@ -109,46 +113,46 @@ app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, funct
         const existingUser = yield db_1.userModel.findOne({ email });
         if (!existingUser) {
             res.status(404).json({
-                message: "user is not present, please signup first with this email"
+                message: "user is not present, please signup first with this email",
             });
             return;
         }
         const matchpassword = yield bcrypt_1.default.compare(password, existingUser === null || existingUser === void 0 ? void 0 : existingUser.password);
         if (!matchpassword) {
             res.status(409).json({
-                message: "Password is incorrect"
+                message: "Password is incorrect",
             });
             return;
         }
         const option = {
             expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-            httpOnly: true
+            httpOnly: true,
         };
         if (!process.env.JWT_SECRET) {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }
         const token = jsonwebtoken_1.default.sign({
             id: existingUser._id,
-            email: existingUser.email
+            email: existingUser.email,
         }, process.env.JWT_SECRET, {
-            expiresIn: "72h"
+            expiresIn: "24h",
         });
         res.cookie("token", token, option).status(200).json({
             message: "User signin successfully",
             token: token,
-            user: existingUser
+            user: existingUser,
         });
     }
     catch (error) {
         if (error instanceof zod_1.ZodError) {
             res.status(404).json({
                 message: "validation error",
-                error: error.errors
+                error: error.errors,
             });
         }
         else {
             res.status(500).json({
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }
@@ -162,29 +166,29 @@ app.post("/api/v1/content", middleware_1.userMiddleware, (req, res) => __awaiter
             link,
             type,
             //@ts-ignore
-            userId: req === null || req === void 0 ? void 0 : req.userId
+            userId: req === null || req === void 0 ? void 0 : req.userId,
             // tag:[]
         });
         if (!createContent) {
             res.status(409).json({
-                message: "Error while crateing content, try again."
+                message: "Error while crateing content, try again.",
             });
             return;
         }
         res.status(200).json({
-            message: "Your new content is created"
+            message: "Your new content is created",
         });
     }
     catch (error) {
         if (error instanceof zod_1.ZodError) {
             res.status(408).json({
                 message: "Validation Error",
-                error: error.errors
+                error: error.errors,
             });
         }
         else {
             res.status(500).json({
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }
@@ -196,25 +200,25 @@ app.get("/api/v1/content", middleware_1.userMiddleware, (req, res) => __awaiter(
         const checkUser = yield db_1.userModel.findOne({ _id: userId });
         if (!checkUser) {
             res.status(409).json({
-                message: "invalid credentials(token), please login again"
+                message: "invalid credentials(token), please login again",
             });
             return;
         }
         const response = yield db_1.contentModel.find({ userId: userId });
         if (!response) {
             res.status(409).json({
-                message: "No content"
+                message: "No content",
             });
             return;
         }
         res.status(200).json({
             message: "All content",
-            data: response
+            data: response,
         });
     }
     catch (error) {
         res.status(500).json({
-            message: "Internal server error"
+            message: "Internal server error",
         });
     }
 }));
@@ -223,58 +227,124 @@ app.delete("/api/v1/content", middleware_1.userMiddleware, (req, res) => __await
         const { postId } = req.body;
         //@ts-ignore
         const userId = req === null || req === void 0 ? void 0 : req.userId;
-        const checkUser = yield db_1.contentModel.findOne({ _id: postId, userId: userId });
+        const checkUser = yield db_1.contentModel.findOne({
+            _id: postId,
+            userId: userId,
+        });
         if (!checkUser) {
             res.status(408).json({
-                message: "Post is not available"
+                message: "Post is not available",
             });
             return;
         }
         const deleteContent = yield db_1.contentModel.deleteOne({ _id: postId }, { new: true });
         res.status(200).json({
-            message: "Content Deleted succesfully"
+            message: "Content Deleted succesfully",
         });
     }
     catch (error) {
         res.status(500).json({
-            message: "Internal server error"
+            message: "Internal server error",
         });
     }
 }));
-app.post("/api/v1/brain/share", (req, res) => {
+app.post("/api/v1/brain/share", middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        //@ts-ignore
+        const userId = req === null || req === void 0 ? void 0 : req.userId;
+        const hash = yield bcrypt_1.default.hash(userId, 10);
+        const user = yield db_1.userModel.findOne({ _id: userId });
+        if (!user) {
+            res.status(403).json({
+                message: "Invaild token.",
+            });
+            return;
+        }
+        const checkLink = yield db_1.linkModel.findOne({
+            userId: user._id,
+        });
+        if (checkLink) {
+            res.status(404).json({
+                message: "Your share link is already created",
+                hash: checkLink.hash,
+            });
+            return;
+        }
+        const createHash = yield db_1.linkModel.create({ hash: hash, userId: user._id });
+        res.status(200).json({
+            hash: createHash.hash,
+            user: createHash.userId,
+            message: "share link is created",
+        });
     }
     catch (error) {
+        res.status(404).json({
+            error: error,
+            message: "internal server error",
+        });
     }
-});
-app.post("/api/v1/brain/:shareLink", (req, res) => {
+}));
+app.get("/api/v1/brain/:shareLink", middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const { shareLink } = req.params;
+        //@ts-ignore
+        const userId = req === null || req === void 0 ? void 0 : req.userId;
+        if (!shareLink) {
+            res.status(400).json({
+                message: "Invalid link",
+            });
+            return;
+        }
+        const findLink = yield db_1.linkModel.findOne({
+            hash: shareLink,
+        });
+        if (!findLink) {
+            res.status(402).json({
+                message: "Content is not sharable",
+            });
+            return;
+        }
+        const findContent = yield db_1.contentModel.find({ userId: findLink.userId });
+        if (!findContent) {
+            res.status(400).json({
+                message: "No content found",
+            });
+            return;
+        }
+        res.status(200).json({
+            message: "All contents created by user",
+            content: findContent,
+        });
     }
     catch (error) {
+        res.status(500).json({
+            error: error,
+            message: "Internal server error",
+        });
     }
-});
+}));
 app.get("/api/v1/me", middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         //@ts-ignore
         const userId = req === null || req === void 0 ? void 0 : req.userId;
         if (!userId) {
             res.status(404).json({
-                message: "User is not loggedIn, try again (token is missing)"
+                message: "User is not loggedIn, try again (token is missing)",
             });
             return;
         }
         else {
             res.status(200).json({
-                message: "User is logged in"
+                message: "User is logged in",
             });
         }
     }
     catch (error) {
         res.status(500).json({
-            message: "Internal Server error while validating token"
+            message: "Internal Server error while validating token",
         });
     }
 }));
 app.listen(PORT, () => {
-    console.log("App is running at port", PORT);
+    console.log(`Server running on port ${PORT}`);
 });

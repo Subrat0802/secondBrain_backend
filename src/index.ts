@@ -23,7 +23,7 @@ app.use(
   })
 );
 app.use(express.json());
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 app.post("/api/v1/signup", async (req, res) => {
   try {
@@ -344,5 +344,5 @@ app.get("/api/v1/me", userMiddleware, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("App is running at port", PORT);
+  console.log(`Server running on port ${PORT}`);
 });
